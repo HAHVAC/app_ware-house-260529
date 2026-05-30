@@ -52,7 +52,7 @@ Run:
 ```bash
 npx create-next-app@latest . --typescript --tailwind --app --src-dir --import-alias "@/*" --no-eslint --use-npm --yes
 ```
-Expected: tạo `src/app/`, `package.json`, `tsconfig.json`, `next.config.ts`, cấu hình Tailwind. Nếu hỏi ghi đè khi thư mục đã có `.git`/`docs`, chọn tiếp tục (không xóa `docs/` và `.git/`).
+Expected: tạo `src/app/`, `package.json`, `tsconfig.json`, `next.config.ts`, cấu hình Tailwind. `create-next-app` **không hỏi ghi đè** — nó giữ nguyên `.git/` và `docs/` và thêm file của nó vào cạnh đó. Nó chỉ **báo lỗi và dừng** nếu thư mục đã có file xung đột (vd `package.json`, thư mục `app/`). Nếu gặp lỗi đó, dọn các file xung đột rồi chạy lại (đừng xóa `.git/` và `docs/`).
 
 - [ ] **Step 2: Cài Vitest**
 
