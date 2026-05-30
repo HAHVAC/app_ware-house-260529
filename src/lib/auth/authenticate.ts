@@ -8,6 +8,11 @@ export interface AuthUserRecord {
 export type UserLookup = (username: string) => Promise<AuthUserRecord | null>;
 export type PasswordVerify = (plain: string, hash: string) => Promise<boolean>;
 
+// Một bcrypt hash hợp lệ nhưng không khớp mật khẩu nào. Khi không tìm thấy user,
+// ta vẫn chạy verify với hash giả này để thời gian phản hồi không khác biệt
+// (chống dò tên đăng nhập qua thời gian — username enumeration).
+const DUMMY_HASH = "$2b$12$zfKmHQZEO9W.ASqHQwJBC..Ist5RcAp8/KpGRJahIY3pU7wXTVzpO";
+
 export async function authenticate(
   lookup: UserLookup,
   verify: PasswordVerify,
@@ -15,7 +20,8 @@ export async function authenticate(
   password: string,
 ): Promise<AuthUserRecord | null> {
   const user = await lookup(username);
-  if (!user || !user.isActive) return null;
-  const ok = await verify(password, user.passwordHash);
-  return ok ? user : null;
+  const hashToCheck = user?.passwordHash ?? DUMMY_HASH;
+  const ok = await verify(password, hashToCheck);
+  if (!user || !user.isActive || !ok) return null;
+  return user;
 }

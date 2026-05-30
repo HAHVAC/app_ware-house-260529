@@ -33,4 +33,14 @@ describe("authenticate", () => {
       Promise.resolve({ ...activeUser, isActive: false });
     expect(await authenticate(lockedLookup, verifyTrue, "admin", "x")).toBeNull();
   });
+
+  it("van goi verify khi khong tim thay user (chong do thoi gian)", async () => {
+    let called = false;
+    const spyVerify = () => {
+      called = true;
+      return Promise.resolve(false);
+    };
+    await authenticate(lookup, spyVerify, "khongco", "x");
+    expect(called).toBe(true);
+  });
 });
