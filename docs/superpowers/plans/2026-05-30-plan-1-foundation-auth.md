@@ -46,13 +46,21 @@
 - Create: `vitest.config.ts`
 - Modify: `package.json` (thêm script test)
 
-- [ ] **Step 1: Tạo scaffold Next.js vào thư mục hiện tại**
+- [ ] **Step 1: Tạo scaffold Next.js**
 
-Run:
-```bash
-npx create-next-app@latest . --typescript --tailwind --app --src-dir --import-alias "@/*" --no-eslint --use-npm --yes
+⚠️ **Lưu ý môi trường:** thư mục dự án (`app_ware house-260529`) có **dấu cách**, mà `create-next-app` v16 không cho đặt tên gói npm có dấu cách (và không có cờ đổi tên). Vì vậy scaffold vào **thư mục con tên hợp lệ** rồi chuyển toàn bộ ra gốc.
+
+Run (PowerShell):
+```powershell
+npx create-next-app@latest warehouse-app --ts --tailwind --app --src-dir --import-alias "@/*" --use-npm --yes --disable-git --skip-install
+# chuyen toan bo (ke ca file an) ra thu muc goc, roi xoa thu muc tam
+Get-ChildItem -Force warehouse-app | Move-Item -Destination .
+Remove-Item warehouse-app
+npm install
 ```
-Expected: tạo `src/app/`, `package.json`, `tsconfig.json`, `next.config.ts`, cấu hình Tailwind. `create-next-app` **không hỏi ghi đè** — nó giữ nguyên `.git/` và `docs/` và thêm file của nó vào cạnh đó. Nó chỉ **báo lỗi và dừng** nếu thư mục đã có file xung đột (vd `package.json`, thư mục `app/`). Nếu gặp lỗi đó, dọn các file xung đột rồi chạy lại (đừng xóa `.git/` và `docs/`).
+Expected: ở thư mục gốc có `src/app/`, `package.json` (name = `warehouse-app`), `tsconfig.json`, `next.config.ts`, `.gitignore`, cấu hình Tailwind, và `node_modules/`. `.git/` và `docs/` vẫn còn nguyên. `--disable-git` để không tạo git lồng nhau; `--skip-install` để cài sau khi đã chuyển ra gốc.
+
+> Ghi chú: dùng `create-next-app@latest` (hiện là v16 → Next.js 16, React 19). Toàn bộ code trong kế hoạch (server actions, `useActionState`, `await cookies()`) tương thích Next.js 16. Nếu `npm install` báo thiếu, chạy lại `npm install` ở thư mục gốc.
 
 - [ ] **Step 2: Cài Vitest**
 
