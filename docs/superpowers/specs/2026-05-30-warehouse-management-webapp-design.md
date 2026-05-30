@@ -108,7 +108,7 @@ Công ty hoạt động trong lĩnh vực thi công **phòng cháy chữa cháy 
 | type | enum: `RECEIPT` (Nhập), `ISSUE` (Xuất), `TRANSFER` (Điều chuyển), `ADJUSTMENT` (Kiểm kê/điều chỉnh) | |
 | warehouseId | fk → Warehouse | kho chính (kho nguồn với điều chuyển) |
 | targetWarehouseId | fk → Warehouse? | kho đích (chỉ với `TRANSFER`) |
-| status | enum: `PENDING` (Chờ duyệt), `APPROVED` (Đã duyệt), `REJECTED` (Từ chối), `COMPLETED` (Hoàn thành/Hiệu lực) | |
+| status | enum: `PENDING` (Chờ duyệt), `APPROVED` (Đã duyệt), `REJECTED` (Từ chối), `COMPLETED` (Hoàn thành/Hiệu lực), `CANCELLED` (Đã hủy) | |
 | createdById | fk → User | người lập |
 | approvedById | fk → User? | người duyệt |
 | completedById | fk → User? | người hoàn thành (thực xuất) |
@@ -195,6 +195,7 @@ Công ty hoạt động trong lĩnh vực thi công **phòng cháy chữa cháy 
 1. **Thủ kho** lập phiếu kiểm kê với **countedQty** (số đếm thực tế) cho từng vật tư → `PENDING`.
 2. **Chỉ huy trưởng/phó** duyệt → `COMPLETED`. (Từ chối → `REJECTED`.)
    - Tác động: tồn được **đặt = countedQty**; chênh lệch (countedQty − tồn cũ) ghi vào `Ledger` (có thể + hoặc −).
+   - Nếu vật tư **chưa có dòng tồn** trong kho, kiểm kê được phép **tạo dòng tồn mới từ 0**.
 
 ---
 
@@ -202,9 +203,11 @@ Công ty hoạt động trong lĩnh vực thi công **phòng cháy chữa cháy 
 
 - **Không cho tồn âm:** kiểm tra tại mọi bước trừ tồn (hoàn thành xuất, duyệt điều chuyển). Thiếu tồn → báo lỗi rõ ràng, **không** cho hoàn thành/duyệt.
 - **Tính nguyên tử (atomic):** cập nhật `Stock` + ghi `Ledger` (+ cập nhật `Document`) luôn chạy trong **một transaction DB** → không sai lệch khi nhiều người thao tác đồng thời.
-- **Khóa phiếu hiệu lực:** phiếu ở trạng thái `COMPLETED` (và biến động tồn đã ghi) **không được sửa/xóa**. Sửa sai bằng cách lập **phiếu kiểm kê/điều chỉnh**. Phiếu `PENDING` có thể bị người lập hủy/sửa trước khi duyệt.
+- **Khóa phiếu hiệu lực:** phiếu ở trạng thái `COMPLETED` (và biến động tồn đã ghi) **không được sửa/xóa**. Sửa sai bằng cách lập **phiếu kiểm kê/điều chỉnh**.
+- **Hủy/sửa phiếu chờ duyệt:** phiếu `PENDING` có thể được **người lập** sửa, hoặc hủy → chuyển trạng thái `CANCELLED` (giữ lịch sử, **không xóa cứng**). Phiếu đã `APPROVED`/`COMPLETED`/`REJECTED` không hủy được.
+- **Cấm tự duyệt:** người duyệt **phải khác** người lập phiếu — kể cả khi một người vừa có vai trò Cán bộ kỹ thuật vừa có vai trò Chỉ huy ở cùng kho.
 - **Validation:** số lượng > 0; đơn giá ≥ 0; mã vật tư & mã kho duy nhất; kho nguồn ≠ kho đích (điều chuyển); thực xuất ≠ số duyệt → bắt buộc lý do.
-- **Số phiếu** tự sinh, duy nhất theo loại + năm.
+- **Số phiếu** tự sinh, duy nhất theo loại + năm. Sinh số an toàn khi nhiều người tạo đồng thời bằng **sequence theo (loại, năm) trong DB** hoặc **thử lại khi trùng** (retry-on-unique-violation) — không tự chế biến cách khác.
 
 ---
 
