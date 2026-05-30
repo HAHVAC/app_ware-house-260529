@@ -126,11 +126,14 @@ git commit -m "chore: khoi tao Next.js + Tailwind + Vitest"
 
 ## Task 2: Prisma + PostgreSQL + model User
 
+> **Đã thực thi với Prisma v7** (máy cài 7.8.0). Khác v6: (1) datasource trong `schema.prisma` **không chứa `url`**; URL đặt ở `prisma.config.ts` (nạp `.env` qua `dotenv`); (2) `PrismaClient` cần **driver adapter** `@prisma/adapter-pg` + `pg`. `src/lib/db.ts` và `prisma/seed.ts` đều theo pattern adapter này.
+
 **Files:**
 - Create: `prisma/schema.prisma`
+- Create: `prisma.config.ts` (Prisma v7: nơi khai báo `datasource.url`)
 - Create: `src/lib/db.ts`
 - Create: `.env`, `.env.example`
-- Modify: `package.json` (script prisma, cấu hình seed)
+- Modify: `package.json` (deps Prisma + adapter; cấu hình seed ở Task 8)
 
 - [ ] **Step 1: Cài Prisma**
 
@@ -663,11 +666,16 @@ git commit -m "feat: layout bao ve route + dang xuat + dashboard tam"
 
 - [ ] **Step 1: Tạo `prisma/seed.ts`**
 
+> **Prisma v7:** không dùng `new PrismaClient()` trần — phải truyền driver adapter (giống `src/lib/db.ts`). Seed chạy qua `tsx` (ngoài Next) nên cần `import "dotenv/config"` để nạp `DATABASE_URL`.
+
 ```ts
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { hashPassword } from "../src/lib/auth/password";
 
-const db = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL as string });
+const db = new PrismaClient({ adapter });
 
 async function main() {
   const username = "admin";
