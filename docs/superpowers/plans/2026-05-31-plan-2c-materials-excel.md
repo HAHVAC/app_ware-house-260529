@@ -691,7 +691,7 @@ export async function importMaterialsAction(
   // Đọc header (dòng 1) rồi map từng dòng thành object keyed theo tên cột
   const headers: string[] = [];
   ws.getRow(1).eachCell((cell, col) => {
-    headers[col] = String(cell.value ?? "").trim();
+    headers[col] = cell.text.trim(); // .text làm phẳng rich-text/công thức
   });
 
   const rows: Record<string, unknown>[] = [];
@@ -700,7 +700,11 @@ export async function importMaterialsAction(
     const obj: Record<string, unknown> = {};
     row.eachCell((cell, col) => {
       const key = headers[col];
-      if (key) obj[key] = cell.value;
+      if (!key) return;
+      const v = cell.value;
+      // Ô rich-text/công thức/hyperlink trả về object → dùng .text (đã làm phẳng).
+      // Số/chuỗi/ngày giữ nguyên giá trị thô (để parse đơn giá số đúng, tránh dấu phân cách).
+      obj[key] = v !== null && typeof v === "object" && !(v instanceof Date) ? cell.text : v;
     });
     if (Object.keys(obj).length > 0) rows.push(obj);
   });
