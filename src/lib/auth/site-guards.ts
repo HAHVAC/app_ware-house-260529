@@ -24,6 +24,19 @@ export async function receivableWarehouses(user: { id: string; companyRole: stri
   return db.warehouse.findMany({ where: { id: { in: ids }, status: "ACTIVE" }, orderBy: { code: "asc" } });
 }
 
+/** Danh sách kho mà user được LẬP ĐỀ NGHỊ XUẤT (ADMIN = tất cả kho ACTIVE; còn lại = kho có vai trò TECHNICIAN). */
+export async function issuableWarehouses(user: { id: string; companyRole: string | null }) {
+  if (user.companyRole === "ADMIN") {
+    return db.warehouse.findMany({ where: { status: "ACTIVE" }, orderBy: { code: "asc" } });
+  }
+  const assignments = await db.assignment.findMany({
+    where: { userId: user.id, siteRole: "TECHNICIAN" },
+    select: { warehouseId: true },
+  });
+  const ids = assignments.map((a) => a.warehouseId);
+  return db.warehouse.findMany({ where: { id: { in: ids }, status: "ACTIVE" }, orderBy: { code: "asc" } });
+}
+
 /** Danh sách id kho mà user được XEM (ADMIN/ACCOUNTANT = tất cả; site user = kho được phân công). */
 export async function viewableWarehouseIds(user: { id: string; companyRole: string | null }): Promise<"ALL" | string[]> {
   if (user.companyRole === "ADMIN" || user.companyRole === "ACCOUNTANT") return "ALL";
