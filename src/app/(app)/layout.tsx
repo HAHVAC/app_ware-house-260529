@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { db } from "@/lib/db";
 import { logoutAction } from "./actions";
 
 const roleLabel: Record<string, string> = {
@@ -17,6 +18,9 @@ export default async function AppLayout({
   if (!user) redirect("/login");
 
   const isAdmin = user.companyRole === "ADMIN";
+  const canReceive =
+    isAdmin ||
+    (await db.assignment.count({ where: { userId: user.id, siteRole: "KEEPER" } })) > 0;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -34,6 +38,10 @@ export default async function AppLayout({
             {isAdmin && (
               <Link href="/materials" className="text-gray-700 hover:text-blue-600">Vật tư</Link>
             )}
+            {canReceive && (
+              <Link href="/receipts" className="text-gray-700 hover:text-blue-600">Nhập kho</Link>
+            )}
+            <Link href="/stock" className="text-gray-700 hover:text-blue-600">Tồn kho</Link>
           </nav>
         </div>
         <div className="flex items-center gap-3 text-sm">
