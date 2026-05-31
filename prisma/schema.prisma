@@ -11,17 +11,6 @@ enum CompanyRole {
   ACCOUNTANT
 }
 
-model User {
-  id           String       @id @default(uuid())
-  fullName     String
-  username     String       @unique
-  passwordHash String
-  companyRole  CompanyRole?
-  isActive     Boolean      @default(true)
-  createdAt    DateTime     @default(now())
-  assignments  Assignment[]
-}
-
 enum WarehouseType {
   PROJECT
   CENTRAL
@@ -39,6 +28,36 @@ enum SiteRole {
   DEPUTY
 }
 
+enum DocumentType {
+  RECEIPT
+  ISSUE
+  TRANSFER
+  ADJUSTMENT
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id           String       @id @default(uuid())
+  fullName     String
+  username     String       @unique
+  passwordHash String
+  companyRole  CompanyRole?
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  assignments  Assignment[]
+
+  createdDocuments   Document[] @relation("DocCreatedBy")
+  approvedDocuments  Document[] @relation("DocApprovedBy")
+  completedDocuments Document[] @relation("DocCompletedBy")
+}
+
 model Warehouse {
   id          String          @id @default(uuid())
   code        String          @unique
@@ -48,6 +67,11 @@ model Warehouse {
   status      WarehouseStatus @default(ACTIVE)
   createdAt   DateTime        @default(now())
   assignments Assignment[]
+
+  stocks          Stock[]
+  documents       Document[] @relation("DocWarehouse")
+  targetDocuments Document[] @relation("DocTargetWarehouse")
+  ledgers         Ledger[]
 }
 
 model Assignment {
@@ -73,4 +97,71 @@ model Material {
   latestUnitPrice Decimal?
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
+
+  stocks        Stock[]
+  documentLines DocumentLine[]
+  ledgers       Ledger[]
+}
+
+model Stock {
+  id          String    @id @default(uuid())
+  warehouseId String
+  materialId  String
+  quantity    Decimal   @default(0)
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  material    Material  @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([warehouseId, materialId])
+}
+
+model Document {
+  id                String         @id @default(uuid())
+  code              String         @unique
+  type              DocumentType
+  warehouseId       String
+  targetWarehouseId String?
+  status            DocumentStatus
+  createdById       String
+  approvedById      String?
+  completedById     String?
+  recipient         String?
+  reason            String?
+  note              String?
+  documentDate      DateTime
+  createdAt         DateTime       @default(now())
+  approvedAt        DateTime?
+  completedAt       DateTime?
+
+  warehouse       Warehouse      @relation("DocWarehouse", fields: [warehouseId], references: [id])
+  targetWarehouse Warehouse?     @relation("DocTargetWarehouse", fields: [targetWarehouseId], references: [id])
+  createdBy       User           @relation("DocCreatedBy", fields: [createdById], references: [id])
+  approvedBy      User?          @relation("DocApprovedBy", fields: [approvedById], references: [id])
+  completedBy     User?          @relation("DocCompletedBy", fields: [completedById], references: [id])
+  lines           DocumentLine[]
+  ledgers         Ledger[]
+}
+
+model DocumentLine {
+  id           String   @id @default(uuid())
+  documentId   String
+  materialId   String
+  requestedQty Decimal
+  actualQty    Decimal?
+  countedQty   Decimal?
+  unitPrice    Decimal?
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  material     Material @relation(fields: [materialId], references: [id])
+}
+
+model Ledger {
+  id           String    @id @default(uuid())
+  warehouseId  String
+  materialId   String
+  change       Decimal
+  balanceAfter Decimal
+  documentId   String
+  createdAt    DateTime  @default(now())
+  warehouse    Warehouse @relation(fields: [warehouseId], references: [id])
+  material     Material  @relation(fields: [materialId], references: [id])
+  document     Document  @relation(fields: [documentId], references: [id])
 }
