@@ -31,6 +31,9 @@ export default async function AppLayout({
             {isAdmin && (
               <Link href="/warehouses" className="text-gray-700 hover:text-blue-600">Công trình</Link>
             )}
+            {isAdmin && (
+              <Link href="/materials" className="text-gray-700 hover:text-blue-600">Vật tư</Link>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-3 text-sm">
