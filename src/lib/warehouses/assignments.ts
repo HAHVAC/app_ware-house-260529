@@ -32,8 +32,15 @@ export async function assignUserAction(
   try {
     await db.assignment.create({ data: { warehouseId, userId, siteRole } });
   } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      return { error: "Người này đã có vai trò này tại công trình" };
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      // Trùng (user+kho+vai trò)
+      if (e.code === "P2002") {
+        return { error: "Người này đã có vai trò này tại công trình" };
+      }
+      // Người dùng hoặc công trình không còn tồn tại (FK) — vd trang cũ
+      if (e.code === "P2003") {
+        return { error: "Người dùng hoặc công trình không hợp lệ" };
+      }
     }
     throw e;
   }
@@ -46,6 +53,7 @@ export async function removeAssignmentAction(formData: FormData): Promise<void> 
   await requireAdmin();
   const id = String(formData.get("id") ?? "");
   const warehouseId = String(formData.get("warehouseId") ?? "");
-  if (id) await db.assignment.delete({ where: { id } });
+  // deleteMany: không văng lỗi nếu dòng đã bị xóa (double-click / trang cũ)
+  if (id) await db.assignment.deleteMany({ where: { id } });
   revalidatePath(`/warehouses/${warehouseId}`);
 }
