@@ -41,6 +41,7 @@ export default async function AppLayout({
             {canReceive && (
               <Link href="/receipts" className="text-gray-700 hover:text-blue-600">Nhập kho</Link>
             )}
+            <Link href="/issues" className="text-gray-700 hover:text-blue-600">Xuất kho</Link>
             <Link href="/stock" className="text-gray-700 hover:text-blue-600">Tồn kho</Link>
           </nav>
         </div>
