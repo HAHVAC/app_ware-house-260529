@@ -60,3 +60,17 @@ model Assignment {
 
   @@unique([userId, warehouseId, siteRole])
 }
+
+model Material {
+  id              String   @id @default(uuid())
+  code            String   @unique
+  categoryName    String?
+  name            String
+  unit            String
+  modelCode       String?
+  brandOrigin     String?
+  specification   String?
+  latestUnitPrice Decimal?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+}
