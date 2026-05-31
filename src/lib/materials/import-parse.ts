@@ -41,6 +41,7 @@ function toPrice(row: RawRow): number | null {
 export function parseMaterialRows(rows: RawRow[]): ParseResult {
   const items: ParsedMaterial[] = [];
   const errors: ParseError[] = [];
+  const seenCodes = new Map<string, number>(); // mã -> dòng đầu tiên gặp
 
   rows.forEach((row, i) => {
     const line = i + 2; // dòng 1 là header
@@ -54,6 +55,14 @@ export function parseMaterialRows(rows: RawRow[]): ParseResult {
       errors.push({ line, message: v.error });
       return;
     }
+
+    // Trùng mã trong cùng file: giữ dòng đầu, báo lỗi dòng sau (tránh ghi đè ngầm + đếm sai)
+    const firstLine = seenCodes.get(code);
+    if (firstLine !== undefined) {
+      errors.push({ line, message: `Mã "${code}" bị trùng trong file (đã có ở dòng ${firstLine})` });
+      return;
+    }
+    seenCodes.set(code, line);
 
     items.push({
       code,

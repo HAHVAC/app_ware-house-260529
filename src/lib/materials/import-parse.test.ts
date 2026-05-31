@@ -39,4 +39,19 @@ describe("parseMaterialRows", () => {
     expect(r.items).toHaveLength(1);
     expect(r.errors).toHaveLength(1);
   });
+  it("trung ma trong cung file -> dong sau bao loi, khong vao items", () => {
+    const r = parseMaterialRows([
+      { "Mã": "VT01", "Tên": "Lan 1", "Đơn vị": "m" },
+      { "Mã": "VT01", "Tên": "Lan 2", "Đơn vị": "m" },
+    ]);
+    expect(r.items).toHaveLength(1);
+    expect(r.items[0].name).toBe("Lan 1"); // giu dong dau, khong ghi de
+    expect(r.errors).toHaveLength(1);
+    expect(r.errors[0].line).toBe(3); // dong thu 2 cua du lieu = dong 3 trong file
+  });
+  it("don gia = 0 hop le", () => {
+    const r = parseMaterialRows([{ "Mã": "VT05", "Tên": "X", "Đơn vị": "cai", "Đơn giá": 0 }]);
+    expect(r.errors).toHaveLength(0);
+    expect(r.items[0].latestUnitPrice).toBe(0);
+  });
 });
