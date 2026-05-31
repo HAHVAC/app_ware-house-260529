@@ -15,7 +15,8 @@
 ## Quyết định thiết kế (đã chốt)
 - Chỉ **ADMIN** truy cập khu `/users`.
 - "Xóa" user = đặt `isActive = false` (vô hiệu hóa). **Không xóa cứng** (giữ tham chiếu lịch sử về sau).
-- **Không cho tự vô hiệu hóa tài khoản đang đăng nhập** (tránh tự khóa mình).
+- **Không cho admin tự vô hiệu hóa HOẶC tự hạ quyền (đổi khỏi ADMIN) chính tài khoản đang đăng nhập** — tránh tự khóa mình ra khỏi khu quản trị (đặc biệt khi chỉ còn 1 admin).
+- **Bắt lỗi unique-constraint (P2002)** khi tạo trùng username để báo thân thiện thay vì văng lỗi 500 (đề phòng đua đồng thời).
 - `username` đặt lúc tạo, **không sửa** ở trang sửa. Được sửa: `fullName`, `companyRole`, `isActive`, và **đặt lại mật khẩu** (tùy chọn).
 - `companyRole` có thể để trống (null) — dành cho user chỉ có vai trò tại kho (gán ở Kế hoạch 2b).
 

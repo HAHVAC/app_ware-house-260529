@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth/guards";
 import { hashPassword } from "@/lib/auth/password";
@@ -33,9 +34,17 @@ export async function createUserAction(
   const existing = await db.user.findUnique({ where: { username } });
   if (existing) return { error: "Tài khoản đã tồn tại" };
 
-  await db.user.create({
-    data: { fullName, username, passwordHash: await hashPassword(password), companyRole },
-  });
+  try {
+    await db.user.create({
+      data: { fullName, username, passwordHash: await hashPassword(password), companyRole },
+    });
+  } catch (e) {
+    // Phòng trường hợp đua tạo trùng username (unique constraint P2002)
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return { error: "Tài khoản đã tồn tại" };
+    }
+    throw e;
+  }
 
   revalidatePath("/users");
   redirect("/users");
@@ -62,8 +71,10 @@ export async function updateUserAction(
   );
   if (!v.ok) return { error: v.error };
 
-  if (admin.id === id && !isActive) {
-    return { error: "Không thể tự vô hiệu hóa tài khoản đang đăng nhập" };
+  // Không cho admin tự vô hiệu hóa HOẶC tự hạ quyền chính mình (tránh tự khóa,
+  // đặc biệt khi hệ thống chỉ còn 1 admin → mất quyền vào khu quản trị vĩnh viễn).
+  if (admin.id === id && (!isActive || companyRole !== "ADMIN")) {
+    return { error: "Không thể tự hạ quyền hoặc vô hiệu hóa tài khoản đang đăng nhập" };
   }
 
   await db.user.update({
