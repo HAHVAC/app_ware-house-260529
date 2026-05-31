@@ -19,4 +19,44 @@ model User {
   companyRole  CompanyRole?
   isActive     Boolean      @default(true)
   createdAt    DateTime     @default(now())
+  assignments  Assignment[]
+}
+
+enum WarehouseType {
+  PROJECT
+  CENTRAL
+}
+
+enum WarehouseStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum SiteRole {
+  KEEPER
+  TECHNICIAN
+  COMMANDER
+  DEPUTY
+}
+
+model Warehouse {
+  id          String          @id @default(uuid())
+  code        String          @unique
+  name        String
+  type        WarehouseType   @default(PROJECT)
+  address     String?
+  status      WarehouseStatus @default(ACTIVE)
+  createdAt   DateTime        @default(now())
+  assignments Assignment[]
+}
+
+model Assignment {
+  id          String    @id @default(uuid())
+  userId      String
+  warehouseId String
+  siteRole    SiteRole
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, warehouseId, siteRole])
 }
