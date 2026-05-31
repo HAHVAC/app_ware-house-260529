@@ -21,7 +21,9 @@ function parseLines(formData: FormData): ReceiptLineInput[] {
     if (m) indexes.add(m[1]);
   }
   const lines: ReceiptLineInput[] = [];
-  for (const i of indexes) {
+  // Giữ đúng thứ tự dòng theo chỉ số (balanceAfter ghi sổ cộng dồn theo thứ tự)
+  const ordered = [...indexes].sort((a, b) => Number(a) - Number(b));
+  for (const i of ordered) {
     const materialId = String(formData.get(`material_${i}`) ?? "").trim();
     if (!materialId) continue;
     const qty = Number(String(formData.get(`qty_${i}`) ?? "").trim());
@@ -30,6 +32,13 @@ function parseLines(formData: FormData): ReceiptLineInput[] {
     lines.push({ materialId, qty, price });
   }
   return lines;
+}
+
+/** Parse "YYYY-MM-DD" theo ngày ĐỊA PHƯƠNG (tránh lệch timezone của new Date(string)). */
+function parseLocalDate(s: string): Date | null {
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
 }
 
 export async function createReceiptAction(
@@ -44,12 +53,26 @@ export async function createReceiptAction(
   const v = validateReceiptInput({ warehouseId, documentDate, note, lines });
   if (!v.ok) return { error: v.error };
 
+  // Ngày nhập parse theo ngày địa phương (mã phiếu lấy năm từ đây)
+  const docDate = parseLocalDate(documentDate);
+  if (!docDate) return { error: "Ngày nhập không hợp lệ" };
+
   // Phân quyền (redirect nếu không được phép — nằm ngoài try/catch bên dưới)
   const user = await requireReceiptCreator(warehouseId);
 
-  const year = new Date(documentDate).getFullYear();
-  const prefix = documentCodePrefix("RECEIPT");
   const materialIds = [...new Set(lines.map((l) => l.materialId))];
+
+  // Server action là biên giới tin cậy: xác minh vật tư có thật và đang dùng
+  const validMaterials = await db.material.findMany({
+    where: { id: { in: materialIds }, isActive: true },
+    select: { id: true },
+  });
+  if (validMaterials.length !== materialIds.length) {
+    return { error: "Có vật tư không hợp lệ hoặc đã ngừng sử dụng" };
+  }
+
+  const year = docDate.getFullYear();
+  const prefix = documentCodePrefix("RECEIPT");
 
   let createdId = "";
   // Retry khi trùng số phiếu (P2002) do tạo đồng thời
@@ -78,7 +101,7 @@ export async function createReceiptAction(
             createdById: user.id,
             completedById: user.id,
             note,
-            documentDate: new Date(documentDate),
+            documentDate: docDate,
             completedAt: new Date(),
             lines: {
               create: lines.map((l) => ({
