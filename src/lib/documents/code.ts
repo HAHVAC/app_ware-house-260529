@@ -4,7 +4,7 @@ const PREFIX: Record<DocumentType, string> = {
   RECEIPT: "PN",
   ISSUE: "PX",
   TRANSFER: "PDC",
-  ADJUSTMENT: "KK",
+  ADJUSTMENT: "PKK",
 };
 
 export function documentCodePrefix(type: DocumentType): string {
