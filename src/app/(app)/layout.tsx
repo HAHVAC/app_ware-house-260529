@@ -43,6 +43,7 @@ export default async function AppLayout({
             )}
             <Link href="/issues" className="text-gray-700 hover:text-blue-600">Xuất kho</Link>
             <Link href="/transfers" className="text-gray-700 hover:text-blue-600">Điều chuyển</Link>
+            <Link href="/stocktakes" className="text-gray-700 hover:text-blue-600">Kiểm kê</Link>
             <Link href="/stock" className="text-gray-700 hover:text-blue-600">Tồn kho</Link>
           </nav>
         </div>
