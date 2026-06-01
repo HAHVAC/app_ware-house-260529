@@ -34,9 +34,11 @@ export async function createTransferAction(
   const assignments = await loadAssignments(user.id);
   if (!canCreateTransfer(user, assignments, sourceWarehouseId)) redirect("/");
 
-  // Kho đích phải tồn tại & đang ACTIVE.
+  // Kho nguồn & kho đích phải tồn tại & đang ACTIVE.
+  const source = await db.warehouse.findFirst({ where: { id: sourceWarehouseId, status: "ACTIVE" }, select: { id: true } });
+  if (!source) return { error: "Kho nguồn không hợp lệ hoặc đã đóng" };
   const target = await db.warehouse.findFirst({ where: { id: targetWarehouseId, status: "ACTIVE" }, select: { id: true } });
-  if (!target) return { error: "Kho đích không hợp lệ" };
+  if (!target) return { error: "Kho đích không hợp lệ hoặc đã đóng" };
 
   const materialIds = [...new Set(lines.map((l) => l.materialId))];
   if (!(await assertMaterialsValid(materialIds))) {
@@ -163,7 +165,10 @@ export async function rejectTransferAction(formData: FormData): Promise<void> {
 }
 
 /** Duyệt = áp dụng: trừ kho nguồn (atomic), cộng kho đích, ghi Ledger 2 dòng/vật tư → COMPLETED. */
-export async function approveTransferAction(formData: FormData): Promise<TransferFormState> {
+export async function approveTransferAction(
+  _prev: TransferFormState,
+  formData: FormData,
+): Promise<TransferFormState> {
   const id = String(formData.get("id") ?? "").trim();
   const doc = await db.document.findUnique({ where: { id }, include: { lines: true } });
   if (!doc || doc.type !== "TRANSFER" || !doc.targetWarehouseId) redirect("/transfers");

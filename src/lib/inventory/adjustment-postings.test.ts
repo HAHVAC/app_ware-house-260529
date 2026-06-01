@@ -39,4 +39,14 @@ describe("computeAdjustmentPostings", () => {
     expect(r[0].materialId).toBe("m2");
     expect(r[0].change.toString()).toBe("-2");
   });
+
+  it("dong trung vat tu -> gop, lay so dem cuoi (last-wins)", () => {
+    const r = computeAdjustmentPostings({ m1: D(10) }, [
+      { materialId: "m1", countedQty: 8 },
+      { materialId: "m1", countedQty: 12 },
+    ]);
+    expect(r).toHaveLength(1);
+    expect(r[0].balanceAfter.toString()).toBe("12");
+    expect(r[0].change.toString()).toBe("2");
+  });
 });

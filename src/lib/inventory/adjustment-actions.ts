@@ -32,6 +32,10 @@ export async function createAdjustmentAction(
   const assignments = await loadAssignments(user.id);
   if (!canCreateAdjustment(user, assignments, warehouseId)) redirect("/");
 
+  // Kho phải tồn tại & đang ACTIVE.
+  const wh = await db.warehouse.findFirst({ where: { id: warehouseId, status: "ACTIVE" }, select: { id: true } });
+  if (!wh) return { error: "Kho không hợp lệ hoặc đã đóng" };
+
   const materialIds = [...new Set(lines.map((l) => l.materialId))];
   if (!(await assertMaterialsValid(materialIds))) {
     return { error: "Có vật tư không hợp lệ hoặc đã ngừng sử dụng" };
@@ -169,28 +173,41 @@ export async function approveAdjustmentAction(formData: FormData): Promise<void>
     .map((l) => ({ materialId: l.materialId, countedQty: Number(l.countedQty) }));
   const materialIds = [...new Set(lines.map((l) => l.materialId))];
 
-  await db.$transaction(async (tx) => {
-    const stocks = await tx.stock.findMany({ where: { warehouseId, materialId: { in: materialIds } } });
-    const currentQty: Record<string, Prisma.Decimal> = {};
-    for (const s of stocks) currentQty[s.materialId] = s.quantity;
+  // Kiểm kê đặt tồn TUYỆT ĐỐI (đọc tồn cũ → ghi đè). Dùng Serializable + retry để 2 phiếu
+  // kiểm kê duyệt đồng thời cùng kho không ghi đè/mất cập nhật của nhau (P2034 = write conflict).
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await db.$transaction(
+        async (tx) => {
+          const stocks = await tx.stock.findMany({ where: { warehouseId, materialId: { in: materialIds } } });
+          const currentQty: Record<string, Prisma.Decimal> = {};
+          for (const s of stocks) currentQty[s.materialId] = s.quantity;
 
-    const postings = computeAdjustmentPostings(currentQty, lines);
-    for (const p of postings) {
-      await tx.stock.upsert({
-        where: { warehouseId_materialId: { warehouseId, materialId: p.materialId } },
-        create: { warehouseId, materialId: p.materialId, quantity: p.balanceAfter },
-        update: { quantity: p.balanceAfter },
-      });
-      await tx.ledger.create({
-        data: { warehouseId, materialId: p.materialId, change: p.change, balanceAfter: p.balanceAfter, documentId: doc.id },
-      });
+          const postings = computeAdjustmentPostings(currentQty, lines);
+          for (const p of postings) {
+            await tx.stock.upsert({
+              where: { warehouseId_materialId: { warehouseId, materialId: p.materialId } },
+              create: { warehouseId, materialId: p.materialId, quantity: p.balanceAfter },
+              update: { quantity: p.balanceAfter },
+            });
+            await tx.ledger.create({
+              data: { warehouseId, materialId: p.materialId, change: p.change, balanceAfter: p.balanceAfter, documentId: doc.id },
+            });
+          }
+
+          await tx.document.update({
+            where: { id },
+            data: { status: "COMPLETED", approvedById: user.id, approvedAt: new Date(), completedById: user.id, completedAt: new Date() },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+      break;
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034" && attempt < 4) continue;
+      throw e;
     }
-
-    await tx.document.update({
-      where: { id },
-      data: { status: "COMPLETED", approvedById: user.id, approvedAt: new Date(), completedById: user.id, completedAt: new Date() },
-    });
-  });
+  }
 
   revalidatePath("/stocktakes");
   revalidatePath("/stock");
