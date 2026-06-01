@@ -3,7 +3,7 @@ import type { DocumentType } from "@prisma/client";
 const PREFIX: Record<DocumentType, string> = {
   RECEIPT: "PN",
   ISSUE: "PX",
-  TRANSFER: "PC",
+  TRANSFER: "PDC",
   ADJUSTMENT: "KK",
 };
 
