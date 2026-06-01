@@ -10,7 +10,7 @@ export function canCreateReceipt(
   return assignments.some((a) => a.warehouseId === warehouseId && a.siteRole === "KEEPER");
 }
 
-type Assignment = { warehouseId: string; siteRole: SiteRole };
+export type Assignment = { warehouseId: string; siteRole: SiteRole };
 
 function hasRoleAt(assignments: Assignment[], warehouseId: string, roles: SiteRole[]): boolean {
   return assignments.some((a) => a.warehouseId === warehouseId && roles.includes(a.siteRole));
@@ -52,6 +52,44 @@ export function canCompleteIssue(
 export function canModifyPendingIssue(
   user: { id: string; companyRole: CompanyRole | null },
   doc: { status: DocumentStatus; createdById: string },
+): boolean {
+  if (doc.status !== "PENDING") return false;
+  return user.companyRole === "ADMIN" || user.id === doc.createdById;
+}
+
+/** Lập điều chuyển: ADMIN hoặc TECHNICIAN của kho nguồn. */
+export function canCreateTransfer(
+  user: { companyRole: CompanyRole | null }, assignments: Assignment[], sourceWarehouseId: string,
+): boolean {
+  if (user.companyRole === "ADMIN") return true;
+  return hasRoleAt(assignments, sourceWarehouseId, ["TECHNICIAN"]);
+}
+/** Duyệt/từ chối điều chuyển: (ADMIN hoặc COMMANDER/DEPUTY của kho nguồn) VÀ không phải người lập. */
+export function canApproveTransfer(
+  user: { id: string; companyRole: CompanyRole | null }, assignments: Assignment[], sourceWarehouseId: string, createdById: string,
+): boolean {
+  if (user.id === createdById) return false;
+  if (user.companyRole === "ADMIN") return true;
+  return hasRoleAt(assignments, sourceWarehouseId, ["COMMANDER", "DEPUTY"]);
+}
+/** Lập kiểm kê: ADMIN hoặc KEEPER của kho. */
+export function canCreateAdjustment(
+  user: { companyRole: CompanyRole | null }, assignments: Assignment[], warehouseId: string,
+): boolean {
+  if (user.companyRole === "ADMIN") return true;
+  return hasRoleAt(assignments, warehouseId, ["KEEPER"]);
+}
+/** Duyệt/từ chối kiểm kê: (ADMIN hoặc COMMANDER/DEPUTY của kho) VÀ không phải người lập. */
+export function canApproveAdjustment(
+  user: { id: string; companyRole: CompanyRole | null }, assignments: Assignment[], warehouseId: string, createdById: string,
+): boolean {
+  if (user.id === createdById) return false;
+  if (user.companyRole === "ADMIN") return true;
+  return hasRoleAt(assignments, warehouseId, ["COMMANDER", "DEPUTY"]);
+}
+/** Sửa/hủy phiếu PENDING (chung): phải PENDING, là người lập hoặc ADMIN. */
+export function canModifyPendingDoc(
+  user: { id: string; companyRole: CompanyRole | null }, doc: { status: DocumentStatus; createdById: string },
 ): boolean {
   if (doc.status !== "PENDING") return false;
   return user.companyRole === "ADMIN" || user.id === doc.createdById;

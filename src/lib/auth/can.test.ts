@@ -70,3 +70,39 @@ describe("canModifyPendingIssue (sua/huy cho duyet)", () => {
   it("da APPROVED -> khong duoc", () =>
     expect(canModifyPendingIssue({ id: "u1", companyRole: null }, { status: "APPROVED", createdById: "u1" })).toBe(false));
 });
+
+import {
+  canCreateTransfer, canApproveTransfer, canCreateAdjustment, canApproveAdjustment, canModifyPendingDoc,
+} from "./can";
+
+const t5_tech = { id: "u-tech", companyRole: null };
+const t5_cmd = { id: "u-cmd", companyRole: null };
+const t5_keeper = { id: "u-keep", companyRole: null };
+const t5_admin = { id: "u-admin", companyRole: "ADMIN" as const };
+const t5_A = (warehouseId: string, siteRole: "KEEPER" | "TECHNICIAN" | "COMMANDER" | "DEPUTY") => ({ warehouseId, siteRole });
+
+describe("canCreateTransfer", () => {
+  it("ADMIN luon duoc", () => { expect(canCreateTransfer(t5_admin, [], "w1")).toBe(true); });
+  it("TECHNICIAN cua kho nguon duoc", () => { expect(canCreateTransfer(t5_tech, [t5_A("w1", "TECHNICIAN")], "w1")).toBe(true); });
+  it("khac kho -> khong", () => { expect(canCreateTransfer(t5_tech, [t5_A("w2", "TECHNICIAN")], "w1")).toBe(false); });
+});
+describe("canApproveTransfer", () => {
+  it("nguoi lap khong tu duyet", () => { expect(canApproveTransfer(t5_cmd, [t5_A("w1", "COMMANDER")], "w1", "u-cmd")).toBe(false); });
+  it("COMMANDER kho nguon, khac nguoi lap -> duoc", () => { expect(canApproveTransfer(t5_cmd, [t5_A("w1", "COMMANDER")], "w1", "u-other")).toBe(true); });
+  it("DEPUTY kho nguon -> duoc", () => { expect(canApproveTransfer(t5_cmd, [t5_A("w1", "DEPUTY")], "w1", "u-other")).toBe(true); });
+  it("ADMIN khac nguoi lap -> duoc", () => { expect(canApproveTransfer(t5_admin, [], "w1", "u-other")).toBe(true); });
+});
+describe("canCreateAdjustment", () => {
+  it("KEEPER cua kho -> duoc", () => { expect(canCreateAdjustment(t5_keeper, [t5_A("w1", "KEEPER")], "w1")).toBe(true); });
+  it("TECHNICIAN -> khong", () => { expect(canCreateAdjustment(t5_tech, [t5_A("w1", "TECHNICIAN")], "w1")).toBe(false); });
+  it("ADMIN -> duoc", () => { expect(canCreateAdjustment(t5_admin, [], "w1")).toBe(true); });
+});
+describe("canApproveAdjustment", () => {
+  it("nguoi lap khong tu duyet", () => { expect(canApproveAdjustment(t5_cmd, [t5_A("w1", "COMMANDER")], "w1", "u-cmd")).toBe(false); });
+  it("COMMANDER khac nguoi lap -> duoc", () => { expect(canApproveAdjustment(t5_cmd, [t5_A("w1", "COMMANDER")], "w1", "u-other")).toBe(true); });
+});
+describe("canModifyPendingDoc", () => {
+  it("PENDING + dung nguoi lap -> duoc", () => { expect(canModifyPendingDoc({ id: "u1", companyRole: null }, { status: "PENDING", createdById: "u1" })).toBe(true); });
+  it("PENDING + ADMIN -> duoc", () => { expect(canModifyPendingDoc(t5_admin, { status: "PENDING", createdById: "u-other" })).toBe(true); });
+  it("khong PENDING -> khong", () => { expect(canModifyPendingDoc({ id: "u1", companyRole: null }, { status: "APPROVED", createdById: "u1" })).toBe(false); });
+});
