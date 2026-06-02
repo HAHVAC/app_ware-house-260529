@@ -14,11 +14,14 @@ export default async function DashboardPage() {
   const approverScope = isAdmin ? {} : { warehouseId: { in: approverIds } };
   const keeperScope = isAdmin ? {} : { warehouseId: { in: keeperIds } };
 
-  // Phiếu chờ duyệt (xuất/điều chuyển/kiểm kê) ở kho mình phụ trách.
+  // Phiếu chờ duyệt ở kho mình phụ trách (không tính phiếu do chính mình lập — cấm tự duyệt).
   const canApproveAny = isAdmin || approverIds.length > 0;
-  const pendingApprove = canApproveAny
-    ? await db.document.count({ where: { status: "PENDING", type: { in: ["ISSUE", "TRANSFER", "ADJUSTMENT"] }, ...approverScope } })
-    : 0;
+  const notSelf = { NOT: { createdById: user.id } };
+  const pendingBy = (type: "ISSUE" | "TRANSFER" | "ADJUSTMENT") =>
+    db.document.count({ where: { status: "PENDING", type, ...approverScope, ...notSelf } });
+  const pendingIssue = canApproveAny ? await pendingBy("ISSUE") : 0;
+  const pendingTransfer = canApproveAny ? await pendingBy("TRANSFER") : 0;
+  const pendingAdjustment = canApproveAny ? await pendingBy("ADJUSTMENT") : 0;
 
   // Phiếu xuất đã duyệt chờ thủ kho ghi thực xuất.
   const canKeep = isAdmin || keeperIds.length > 0;
@@ -43,8 +46,20 @@ export default async function DashboardPage() {
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {canApproveAny && (
           <Link href="/issues" className="bg-white rounded-xl shadow p-4 hover:shadow-md">
-            <div className="text-3xl font-semibold text-amber-600">{pendingApprove}</div>
-            <div className="text-sm text-gray-600 mt-1">Phiếu chờ bạn duyệt (xuất/điều chuyển/kiểm kê)</div>
+            <div className="text-3xl font-semibold text-amber-600">{pendingIssue}</div>
+            <div className="text-sm text-gray-600 mt-1">Phiếu xuất chờ bạn duyệt</div>
+          </Link>
+        )}
+        {canApproveAny && (
+          <Link href="/transfers" className="bg-white rounded-xl shadow p-4 hover:shadow-md">
+            <div className="text-3xl font-semibold text-amber-600">{pendingTransfer}</div>
+            <div className="text-sm text-gray-600 mt-1">Phiếu điều chuyển chờ bạn duyệt</div>
+          </Link>
+        )}
+        {canApproveAny && (
+          <Link href="/stocktakes" className="bg-white rounded-xl shadow p-4 hover:shadow-md">
+            <div className="text-3xl font-semibold text-amber-600">{pendingAdjustment}</div>
+            <div className="text-sm text-gray-600 mt-1">Phiếu kiểm kê chờ bạn duyệt</div>
           </Link>
         )}
         {canKeep && (
