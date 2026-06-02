@@ -24,7 +24,7 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b bg-white px-4 py-3 flex items-center justify-between">
+      <header className="border-b bg-white px-4 py-3 flex items-center justify-between print:hidden">
         <div className="flex items-center gap-4">
           <span className="font-semibold">Quản lý Kho</span>
           <nav className="flex items-center gap-3 text-sm">

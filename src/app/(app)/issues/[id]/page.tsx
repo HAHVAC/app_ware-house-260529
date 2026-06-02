@@ -43,7 +43,10 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
     <div className="max-w-3xl space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Phiếu xuất {doc.code}</h1>
-        <Link href="/issues" className="text-sm text-gray-600">← Danh sách</Link>
+        <div className="flex items-center gap-3">
+          <Link href={`/documents/${doc.id}/print`} target="_blank" className="text-sm text-blue-600 hover:underline">In phiếu</Link>
+          <Link href="/issues" className="text-sm text-gray-600">← Danh sách</Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow p-4 text-sm space-y-1">
